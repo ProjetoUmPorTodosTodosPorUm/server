@@ -1,0 +1,3 @@
+# Docker Tag
+# use SemVer https://semver.org/
+SERVER_VERSION="1.0.0"

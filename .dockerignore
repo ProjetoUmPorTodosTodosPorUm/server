@@ -1,0 +1,9 @@
+.env*
+*.sh
+docker-compose*
+
+.dockerignore
+Dockerfile
+scripts/
+
+!scripts.sh

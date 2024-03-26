@@ -1,0 +1,117 @@
+version: '3.9'
+
+services:
+  server:
+    container_name: server
+    image: renangalvao/project:server-latest
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        delay: 5s
+        window: 5s
+    healthcheck:
+      # any endpoint
+      test: curl -f localhost || exit 1
+      interval: 1m
+    volumes:
+      - files_volume:/var/www/files
+      - lets_encrypt:/etc/letsencrypt
+    networks:
+      - main_network
+    ports:
+      - 80:80
+      - 443:443
+
+  db:
+    image: postgres:13-alpine
+    environment:
+      - POSTGRES_USER=projeto
+      - POSTGRES_PASSWORD=projeto
+      - POSTGRES_DB=projeto
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        delay: 5s
+        window: 5s
+    healthcheck:
+      # any endpoint
+      test: pg_isready -d projeto
+      interval: 1m
+    volumes:
+      - db_volume:/var/lib/postgresql/data
+    networks:
+      - main_network
+
+  api:
+    image: renangalvao/project:api-latest
+    command: sh -c "npx prisma migrate deploy && npx prisma db seed && node dist/main.js"
+    env_file:
+      - .env.preview
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        delay: 5s
+        window: 5s
+    healthcheck:
+      # simple node
+      test: wget -qO- localhost:3000/health  || exit 1
+      interval: 1m
+    volumes:
+      - files_volume:/usr/src/app/files
+    networks:
+      - main_network
+    depends_on:
+      - db
+    
+  web:
+    image: renangalvao/project:web-latest
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        delay: 5s
+        window: 5s
+    healthcheck:
+      # sveltekit
+      test: wget -qO- 0.0.0.0:3000/health  || exit 1
+      interval: 1m
+    networks:
+      - main_network
+    depends_on:
+      - api
+
+  cms:
+    image: renangalvao/project:cms-latest
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        delay: 5s
+        window: 5s
+    healthcheck:
+      # sveltekit
+      test: wget -qO- 0.0.0.0:3000/health  || exit 1
+      interval: 1m
+    networks:
+      - main_network
+    depends_on:
+      - api
+
+networks:
+  main_network:
+    name: main_network
+    driver: bridge
+
+volumes:
+  files_volume:
+    name: files
+  db_volume:
+    name: db
+  lets_encrypt:
+    name: lets_encrypt
+    

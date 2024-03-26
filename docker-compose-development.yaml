@@ -1,0 +1,68 @@
+version: '3.9'
+
+services:
+  dev-server:
+    container_name: server
+    build:
+      context: .
+      target: dev-image
+      args:
+        - BACKEND_SERVER_URL=$BACKEND_SERVER_URL
+        - WEB_SERVER_URL=$WEB_SERVER_URL
+        - CMS_SERVER_URL=$CMS_SERVER_URL
+        - ENABLED_MODULES=headers-more brotli
+    env_file:
+      - .env.dev
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        delay: 5s
+        window: 5s
+    healthcheck:
+      # any endpoint
+      test: curl -f localhost || exit 1
+      interval: 1m
+    volumes:
+      - files_volume:/var/www/files
+    networks:
+      - main_network
+    ports:
+      - 80:80
+      - 443:443
+    depends_on:
+      - dev-db
+
+  dev-db:
+    image: postgres:13-alpine
+    environment:
+      - POSTGRES_USER=projeto
+      - POSTGRES_PASSWORD=projeto
+      - POSTGRES_DB=projeto
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        delay: 5s
+        window: 5s
+    healthcheck:
+      # any endpoint
+      test: pg_isready -d projeto
+      interval: 1m
+    volumes:
+      - db_volume:/var/lib/postgresql/data
+    networks:
+      - main_network
+    ports:
+      - 5432:5432
+
+networks:
+  main_network:
+    name: main_network
+    driver: bridge
+
+volumes:
+  files_volume:
+    name: files
+  db_volume:
+    name: db

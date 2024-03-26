@@ -1,0 +1,6 @@
+server {
+  listen 80;
+  server_name ${CMS_SERVER_NAME} www.${CMS_SERVER_NAME};
+
+  root /var/www/html;
+}

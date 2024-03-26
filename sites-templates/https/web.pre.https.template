@@ -1,0 +1,6 @@
+server {
+  listen 80 default_server;
+  server_name ${WEB_SERVER_NAME} www.${WEB_SERVER_NAME};
+
+  root /var/www/html;
+}

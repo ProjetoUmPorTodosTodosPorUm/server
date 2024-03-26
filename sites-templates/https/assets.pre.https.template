@@ -1,0 +1,6 @@
+server {
+  listen 80;
+  server_name ${ASSETS_SERVER_NAME} www.${ASSETS_SERVER_NAME};
+
+  root /var/www/html;
+}
