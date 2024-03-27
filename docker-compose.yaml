@@ -11,8 +11,7 @@ services:
         delay: 5s
         window: 5s
     healthcheck:
-      # any endpoint
-      test: curl -f localhost || exit 1
+      test: curl -f localhost/health || exit 1
       interval: 1m
     volumes:
       - files_volume:/var/www/files
@@ -36,7 +35,6 @@ services:
         delay: 5s
         window: 5s
     healthcheck:
-      # any endpoint
       test: pg_isready -d projeto
       interval: 1m
     volumes:
