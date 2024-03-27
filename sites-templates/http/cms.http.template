@@ -1,3 +1,8 @@
+map ${DOLLAR}http_upgrade ${DOLLAR}connection_upgrade{
+  default upgrade;
+  '' close;
+}
+
 server {
   listen 80;
   server_name ${CMS_SERVER_NAME} www.${CMS_SERVER_NAME};
@@ -38,5 +43,12 @@ server {
     proxy_pass http://cmsserver;
     proxy_http_version 1.1;
     proxy_set_header "Connection" "";
+  }
+
+  location /wss {
+    proxy_pass http://cmsserver/wss;
+    proxy_http_version 1.1;
+    proxy_set_header Connection ${DOLLAR}connection_upgrade;
+    proxy_set_header Upgrade ${DOLLAR}http_upgrade;
   }
 }
