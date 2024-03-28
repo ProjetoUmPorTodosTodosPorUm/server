@@ -1,8 +1,10 @@
 # Server
-Server container for [projetoumportodostodosporum.org's](https://projetoumportodostodosporum.org) website.
+Server component of [projetoumportodostodosporum.org's](https://projetoumportodostodosporum.org) website.
 
 ## Dependencies
 - [Docker Engine with Docker Compose](https://docs.docker.com/engine/install/)
+- [OpenSSL for Linux](https://www.openssl.org/source/)
+- add ``localhost.crt`` (generated after ``start:dev``) as "certificate authority" in your browser
 
 
 ## Environment Vars
@@ -24,6 +26,11 @@ $ ./scripts.sh start:preview
 ### Production
 ```bash
 $ ./scripts.sh start:prod
+```
+For development and preview mode you need to generate a certificate and trust systemwide:
+```bash
+$ ./scripts.sh openssl:certificate
+$ sudo ./scripts.sh openssl:trust
 ```
 
 

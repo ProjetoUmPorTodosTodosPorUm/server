@@ -18,7 +18,7 @@ server {
   server_name ${CMS_SERVER_NAME} www.${CMS_SERVER_NAME};
 
   limit_conn conn ${MAX_CONN_CMS};
-  limit_req zone=web burst=100 nodelay;
+  limit_req zone=web burst=200 nodelay;
 
   ssl_certificate /etc/ssl/certs/localhost.crt;
   ssl_certificate_key /etc/ssl/private/localhost.key;

@@ -28,6 +28,9 @@ stop:prod           - stop project in production mode
 build:preview       - build preview server image
 build:prod          - build production server image and push to registry
 
+openssl:certificate - generate certificate
+openssl:trust       - trust localhost.crt systemwide (root)
+
 -- INSIDE CONTAINER --
 certbot:renew       - Cerbot renew process
 certbot:renew-dry   - Cerbot renew test process
@@ -65,6 +68,32 @@ function readEnvFile() {
     set -a # automatically export all variables
     source $fileName
     set +a
+}
+
+function isRoot() {
+    if [ $EUID -ne 0 ]; then
+	    echo "You need to run this script as root. Exiting..."
+	    exit 1
+    fi
+}
+
+# OpenSSL
+function openSSL() {
+    echoCommand "openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 365 -keyout localhost.key -out localhost.crt -config localhost.cert.conf"
+    openssl req -x509 -newkey rsa:2048 -nodes -sha256 -keyout localhost.key -out localhost.crt -config localhost.cert.conf
+}
+
+function trustCertificateSystemWide() {
+    isRoot
+    echoCommand "trust anchor localhost.crt"
+    trust anchor localhost.crt
+
+    # fallback for p11-kit: no configured writable location to store anchors
+    # https://wiki.archlinux.org/title/User:Grawity/Adding_a_trusted_CA_certificate 3
+    echoCommand "mkdir -p /usr/local/share/ca-certificates && cp localhost.crt /usr/local/share/ca-certificates/"
+    mkdir -p /usr/local/share/ca-certificates && cp localhost.crt /usr/local/share/ca-certificates/
+    echoCommand "sudo update-ca-certificates"
+    sudo update-ca-certificates
 }
 
 # Development
@@ -196,6 +225,11 @@ case $command in
         dockerBuildPreview;;
     build:prod)
         dockerBuildProduction;;
+
+    openssl:certificate)
+        openSSL;;
+    openssl:trust)
+        trustCertificateSystemWide;;
 
     certbot:renew)
         certbotRenew;;
