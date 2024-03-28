@@ -174,8 +174,8 @@ ARG MAX_CONN_WEB=50
 ARG MAX_CONN_CMS=50
 
 # SSL
-COPY localhost.cert.conf /etc/nginx/
-RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/localhost.key -out /etc/ssl/certs/localhost.crt -config /etc/nginx/localhost.cert.conf
+COPY localhost.crt /etc/ssl/certs/localhost.crt
+COPY localhost.key /etc/ssl/private/localhost.key
 RUN chown nginx:nginx /etc/ssl/private/localhost.key && chown nginx:nginx /etc/ssl/certs/localhost.crt
 
 # Conf files
