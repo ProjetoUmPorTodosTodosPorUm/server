@@ -3,7 +3,7 @@ server {
   server_name ${WEB_SERVER_NAME} www.${WEB_SERVER_NAME};
 
   limit_conn conn ${MAX_CONN_WEB};
-  limit_req zone=web burst=100 nodelay;
+  limit_req zone=web burst=25 nodelay;
 
   location / {
     rewrite ^ https://${DOLLAR}host${DOLLAR}request_uri? permanent;
@@ -16,12 +16,21 @@ server {
 }
 
 server {
-  listen 443 ssl reuseport backlog=4096;
+  # can't use reuseport
+  # include conf.d/quic-http2.conf;
+  listen 443 quic reuseport backlog=4096;
+  listen 443 ssl;
+
   http2 on;
+  quic_retry on;
+  ssl_early_data on;
+  proxy_set_header Early-Data ${DOLLAR}ssl_early_data;
+  http3_hq on;
+
   server_name ${WEB_SERVER_NAME} www.${WEB_SERVER_NAME};
 
   limit_conn conn ${MAX_CONN_WEB};
-  limit_req zone=web burst=100 nodelay;
+  limit_req zone=web burst=25 nodelay;
 
   ssl_certificate /etc/letsencrypt/live/${WEB_SERVER_NAME}/fullchain.pem;
   ssl_certificate_key /etc/letsencrypt/live/${WEB_SERVER_NAME}/privkey.pem;
@@ -29,24 +38,22 @@ server {
   include conf.d/ssl.conf;
 
   location / {
-    # Simple requests
-    if (${DOLLAR}request_method = GET) {
-      add_header "X-Cache-Status" ${DOLLAR}upstream_cache_status;
-    }
-
+    include conf.d/cache-quic-headers.conf;
     include conf.d/cors-preflight.conf;
 
     proxy_cache cache;
     proxy_cache_valid 200 5s;
+    proxy_cache_bypass ${DOLLAR}http_authorization;
 
     proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
     proxy_set_header Host ${DOLLAR}host;
+    proxy_set_header "Connection" "";
 
     proxy_pass http://webserver;
     proxy_http_version 1.1;
-    proxy_set_header "Connection" "";
   }
 
+  # nginx health check, not webserver's app
   location /health {
     add_header "Content-Type" text/plain;
     return 200 'ok';

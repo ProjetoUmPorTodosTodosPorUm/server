@@ -1,6 +1,7 @@
 # Server
 Server component of [projetoumportodostodosporum.org's](https://projetoumportodostodosporum.org) website.
 
+
 ## Dependencies
 - [Docker Engine with Docker Compose](https://docs.docker.com/engine/install/)
 - [OpenSSL for Linux](https://www.openssl.org/source/)
@@ -13,6 +14,20 @@ Create a copy from ".env.dev.example" file in the root folder and rename to ".en
 
 ### Preview
 Same as above using ".env.preview.example" file.
+
+### Production
+You need to [set these variables session-wide](https://help.ubuntu.com/community/EnvironmentVariables#Session-wide_environment_variables):
+- ``ACCESS_TOKEN_JWT_SECRET``
+- ``REFRESH_TOKEN_JWT_SECRET``
+- ``MAIL_HOST``
+- ``MAIL_PORT``
+- ``MAIL_USER``
+- ``MAIL_PASSWORD``
+- ``MAIL_FROM``
+- ``DATABASE_URL``
+- ``DB_USER``
+- ``DB_PASSWORD``
+
 
 ## Run
 ### Development

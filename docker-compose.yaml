@@ -20,14 +20,15 @@ services:
       - main_network
     ports:
       - 80:80
-      - 443:443
+      - 443:443/tcp
+      - 443:443/udp
 
   db:
     image: postgres:13-alpine
     environment:
-      - POSTGRES_USER=projeto
-      - POSTGRES_PASSWORD=projeto
-      - POSTGRES_DB=projeto
+      - POSTGRES_USER=$DB_USER
+      - POSTGRES_PASSWORD=$DB_PASSWORD
+      - POSTGRES_DB=project
     deploy:
       restart_policy:
         condition: on-failure
@@ -35,7 +36,7 @@ services:
         delay: 5s
         window: 5s
     healthcheck:
-      test: pg_isready -d projeto
+      test: pg_isready -d project
       interval: 1m
     volumes:
       - db_volume:/var/lib/postgresql/data
@@ -44,9 +45,15 @@ services:
 
   api:
     image: renangalvao/project:api-latest
-    command: sh -c "npx prisma migrate deploy && npx prisma db seed && node dist/main.js"
-    env_file:
-      - .env.preview
+    environment:
+      - ACCESS_TOKEN_JWT_SECRET=$ACCESS_TOKEN_JWT_SECRET
+      - REFRESH_TOKEN_JWT_SECRET=$REFRESH_TOKEN_JWT_SECRET
+      - MAIL_HOST=$MAIL_HOST
+      - MAIL_PORT=$MAIL_PORT
+      - MAIL_USER=$MAIL_USER
+      - MAIL_PASSWORD=$MAIL_PASSWORD
+      - MAIL_FROM=$MAIL_FROM
+      - DATABASE_URL=$DATABASE_URL
     deploy:
       restart_policy:
         condition: on-failure
@@ -85,7 +92,6 @@ services:
   cms:
     image: renangalvao/project:cms-latest
     deploy:
-      replicas: 2
       restart_policy:
         condition: on-failure
         max_attempts: 5

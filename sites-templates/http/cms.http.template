@@ -13,12 +13,11 @@ server {
 }
 
 server {
-  listen 443 ssl;
-  http2 on;
+  include conf.d/quic-http2.conf;
   server_name ${CMS_SERVER_NAME} www.${CMS_SERVER_NAME};
 
   limit_conn conn ${MAX_CONN_CMS};
-  limit_req zone=web burst=200 nodelay;
+  limit_req zone=web burst=500 nodelay;
 
   ssl_certificate /etc/ssl/certs/localhost.crt;
   ssl_certificate_key /etc/ssl/private/localhost.key;
@@ -26,11 +25,7 @@ server {
   include conf.d/ssl.conf;
 
   location / {
-    # Simple requests
-    if (${DOLLAR}request_method = GET) {
-      add_header "X-Cache-Status" ${DOLLAR}upstream_cache_status;
-    }
-
+    include conf.d/cache-quic-headers.conf;
     include conf.d/cors-preflight.conf;
 
     proxy_cache cache;
@@ -39,10 +34,10 @@ server {
 
     proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
     proxy_set_header Host ${DOLLAR}host;
+    proxy_set_header Connection "";
 
     proxy_pass http://cmsserver;
     proxy_http_version 1.1;
-    proxy_set_header "Connection" "";
   }
 
   location /wss {
