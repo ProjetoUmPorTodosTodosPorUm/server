@@ -11,8 +11,6 @@ services:
         - WEB_SERVER_URL=$WEB_SERVER_URL
         - CMS_SERVER_URL=$CMS_SERVER_URL
         - ENABLED_MODULES=headers-more brotli
-    env_file:
-      - .env.dev
     deploy:
       restart_policy:
         condition: on-failure
@@ -28,16 +26,17 @@ services:
       - main_network
     ports:
       - 80:80
-      - 443:443
+      - 443:443/tcp
+      - 443:443/udp
     depends_on:
       - dev-db
 
   dev-db:
     image: postgres:13-alpine
     environment:
-      - POSTGRES_USER=projeto
-      - POSTGRES_PASSWORD=projeto
-      - POSTGRES_DB=projeto
+      - POSTGRES_USER=project
+      - POSTGRES_PASSWORD=project
+      - POSTGRES_DB=project
     deploy:
       restart_policy:
         condition: on-failure
@@ -46,7 +45,7 @@ services:
         window: 5s
     healthcheck:
       # any endpoint
-      test: pg_isready -d projeto
+      test: pg_isready -d project
       interval: 1m
     volumes:
       - db_volume:/var/lib/postgresql/data

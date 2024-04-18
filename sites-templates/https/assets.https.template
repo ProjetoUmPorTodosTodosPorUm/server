@@ -3,7 +3,7 @@ server {
   server_name ${ASSETS_SERVER_NAME} www.${ASSETS_SERVER_NAME};
 
   limit_conn conn ${MAX_CONN_WEB};
-  limit_req zone=web burst=100 nodelay;
+  limit_req zone=web burst=25 nodelay;
   
   location / {
     rewrite ^ https://${DOLLAR}host${DOLLAR}request_uri? permanent;
@@ -16,40 +16,31 @@ server {
 }
 
 server {
-  listen 443 ssl;
-  http2 on;
+  include conf.d/quic-http2.conf;
   server_name ${ASSETS_SERVER_NAME} www.${ASSETS_SERVER_NAME};
 
   limit_conn conn ${MAX_CONN_WEB};
-  limit_req zone=web burst=100 nodelay;
+  limit_req zone=web burst=25 nodelay;
 
   ssl_certificate /etc/letsencrypt/live/${ASSETS_SERVER_NAME}/fullchain.pem;
   ssl_certificate_key /etc/letsencrypt/live/${ASSETS_SERVER_NAME}/privkey.pem;
 
   include conf.d/ssl.conf;
 
+  root /var/www/assets;
+  access_log off;
+  sendfile on;
+  sendfile_max_chunk 1m;
+  tcp_nopush on;
+
   # Image, Document
   location ~* \.(?:jpg|jpeg|gif|png|webp|svg|pdf)$ {
-    root /var/www/assets;
-    access_log off;
-
-    sendfile on;
-    sendfile_max_chunk 1m;
-    tcp_nopush on;
-
     add_header "Cache-Control" "public";
     expires 1M;
   }
 
   # Css, Js
   location ~* \.(?:css|js)$ {
-    root /var/www/assets;
-    access_log off;
-
-    sendfile on;
-    sendfile_max_chunk 1m;
-    tcp_nopush on;
-
     add_header "Cache-Control" "public";
     expires 1y;
   }

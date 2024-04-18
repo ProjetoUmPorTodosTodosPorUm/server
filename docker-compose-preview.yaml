@@ -19,14 +19,15 @@ services:
       - main_network
     ports:
       - 80:80
-      - 443:443
+      - 443:443/tcp
+      - 443:443/udp
 
   preview-db:
     image: postgres:13-alpine
     environment:
-      - POSTGRES_USER=projeto
-      - POSTGRES_PASSWORD=projeto
-      - POSTGRES_DB=projeto
+      - POSTGRES_USER=project
+      - POSTGRES_PASSWORD=project
+      - POSTGRES_DB=project
     deploy:
       restart_policy:
         condition: on-failure
@@ -34,7 +35,7 @@ services:
         delay: 5s
         window: 5s
     healthcheck:
-      test: pg_isready -d projeto
+      test: pg_isready -d project
       interval: 1m
     volumes:
       - preview_db_volume:/var/lib/postgresql/data
@@ -43,7 +44,6 @@ services:
 
   preview-api:
     image: project/api:preview
-    command: sh -c "npx prisma migrate deploy && npx prisma db seed && node dist/main.js"
     env_file:
       - .env.preview
     deploy:

@@ -147,8 +147,8 @@ function dockerProductionRestart() {
 
 # Build Preview
 function dockerBuildPreview() {
-    echoCommand "docker build --target preview-image -t project/server:preview ."
-    docker build --target preview-image -t project/server:preview .
+    echoCommand "docker build --no-cache --target preview-image -t project/server:preview ."
+    docker build --no-cache --target preview-image -t project/server:preview .
 }
 
 # Build Production

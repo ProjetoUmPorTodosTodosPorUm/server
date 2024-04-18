@@ -96,6 +96,7 @@ RUN mkdir -p /etc/nginx/sites-enabled
 RUN mkdir -p /etc/nginx/sites-templates
 RUN mkdir -p /var/www/assets
 RUN mkdir -p /var/www/files
+RUN mkdir -p /var/www/html
 
 # conf.d folder
 COPY conf.d /etc/nginx/conf.d
@@ -151,6 +152,7 @@ RUN ln -s /etc/nginx/sites-available/${FILES_SERVER_NAME} /etc/nginx/sites-enabl
 
 EXPOSE 80/TCP
 EXPOSE 443/TCP
+EXPOSE 443/UDP
 USER nginx:nginx
 CMD ["/bin/sh", "-c", "exec nginx -g 'daemon off;';"]
 
@@ -195,6 +197,7 @@ RUN ln -s /etc/nginx/sites-available/${FILES_SERVER_NAME} /etc/nginx/sites-enabl
 
 EXPOSE 80/TCP
 EXPOSE 443/TCP
+EXPOSE 443/UDP
 USER nginx:nginx
 CMD ["/bin/sh", "-c", "exec nginx -g 'daemon off;';"]
 
@@ -239,5 +242,6 @@ RUN envsubst < /etc/nginx/sites-templates/https/files.https.template > /etc/ngin
 
 EXPOSE 80/TCP
 EXPOSE 443/TCP
+EXPOSE 443/UDP
 USER nginx:nginx
 CMD ["/bin/sh", "-c", "exec nginx -g 'daemon off;';"]
