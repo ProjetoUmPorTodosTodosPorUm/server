@@ -43,6 +43,22 @@ services:
     networks:
       - main_network
 
+  redis:
+    image: redis:7.2-alpine
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        delay: 5s
+        window: 5s
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 1m
+    volumes:
+      - redis_volume:/data
+    networks:
+      - main_network
+
   api:
     image: renangalvao/project:api-latest
     environment:
@@ -70,7 +86,8 @@ services:
       - main_network
     depends_on:
       - db
-    
+      - redis
+
   web:
     image: renangalvao/project:web-latest
     deploy:
@@ -116,6 +133,7 @@ volumes:
     name: files
   db_volume:
     name: db
+  redis_volume:
+    name: redis_volume
   lets_encrypt:
     name: lets_encrypt
-    
