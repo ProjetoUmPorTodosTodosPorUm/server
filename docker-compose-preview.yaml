@@ -42,6 +42,22 @@ services:
     networks:
       - main_network
 
+  preview-redis:
+    image: redis:7.2-alpine
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        delay: 5s
+        window: 5s
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 1m
+    volumes:
+      - preview_redis_volume:/data
+    networks:
+      - main_network
+
   preview-api:
     image: project/api:preview
     env_file:
@@ -62,7 +78,8 @@ services:
       - main_network
     depends_on:
       - preview-db
-    
+      - preview-redis
+
   preview-web:
     image: project/web:preview
     deploy:
@@ -108,3 +125,5 @@ volumes:
     name: files
   preview_db_volume:
     name: db
+  preview_redis_volume:
+    name: redis_volume

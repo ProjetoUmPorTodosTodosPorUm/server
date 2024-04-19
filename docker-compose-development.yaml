@@ -30,6 +30,7 @@ services:
       - 443:443/udp
     depends_on:
       - dev-db
+      - dev-redis
 
   dev-db:
     image: postgres:13-alpine
@@ -54,6 +55,24 @@ services:
     ports:
       - 5432:5432
 
+  dev-redis:
+    image: redis:7.2-alpine
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        delay: 5s
+        window: 5s
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 1m
+    volumes:
+      - redis_volume:/data
+    networks:
+      - main_network
+    ports:
+      - 6379:6379
+
 networks:
   main_network:
     name: main_network
@@ -64,3 +83,5 @@ volumes:
     name: files
   db_volume:
     name: db
+  redis_volume:
+    name: redis_volume
