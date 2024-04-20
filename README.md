@@ -27,6 +27,8 @@ You need to [set these variables session-wide](https://help.ubuntu.com/community
 - ``DATABASE_URL``
 - ``DB_USER``
 - ``DB_PASSWORD``
+- ``REDIS_HOST``
+- ``REDIS_PORT``
 
 
 ## Run
