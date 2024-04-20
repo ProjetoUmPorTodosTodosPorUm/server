@@ -220,6 +220,10 @@ ARG MAX_CONN_API=5
 ARG MAX_CONN_WEB=50
 ARG MAX_CONN_CMS=50
 
+# Conf files
+COPY nginx.template /etc/nginx/
+RUN envsubst < /etc/nginx/nginx.template > /etc/nginx/nginx.conf
+
 # Pre Certbot certificate
 RUN envsubst < /etc/nginx/sites-templates/https/api.pre.https.template > /etc/nginx/sites-available/pre.${BACKEND_SERVER_NAME}
 RUN envsubst < /etc/nginx/sites-templates/https/cms.pre.https.template > /etc/nginx/sites-available/pre.${CMS_SERVER_NAME}
