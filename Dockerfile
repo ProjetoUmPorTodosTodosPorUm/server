@@ -88,7 +88,7 @@ FROM builder as base-image
 RUN apk add --update --no-cache certbot certbot-nginx bash openssl
 
 # Caching
-RUN mkdir -p /var/cache/nginx && chown nginx:nginx /var/cache/nginx
+RUN mkdir -p /var/cache/nginx
 
 # Folders
 RUN mkdir -p /etc/nginx/sites-available
@@ -133,7 +133,6 @@ ARG MAX_CONN_CMS=50
 # SSL
 COPY localhost.cert.conf /etc/nginx/
 RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/localhost.key -out /etc/ssl/certs/localhost.crt -config /etc/nginx/localhost.cert.conf
-RUN chown nginx:nginx /etc/ssl/private/localhost.key && chown nginx:nginx /etc/ssl/certs/localhost.crt
 
 # Conf files
 COPY nginx.template /etc/nginx/
@@ -153,7 +152,6 @@ RUN ln -s /etc/nginx/sites-available/${FILES_SERVER_NAME} /etc/nginx/sites-enabl
 EXPOSE 80/TCP
 EXPOSE 443/TCP
 EXPOSE 443/UDP
-USER nginx:nginx
 CMD ["/bin/sh", "-c", "exec nginx -g 'daemon off;';"]
 
 ###################
@@ -178,7 +176,6 @@ ARG MAX_CONN_CMS=50
 # SSL
 COPY localhost.crt /etc/ssl/certs/localhost.crt
 COPY localhost.key /etc/ssl/private/localhost.key
-RUN chown nginx:nginx /etc/ssl/private/localhost.key && chown nginx:nginx /etc/ssl/certs/localhost.crt
 
 # Conf files
 COPY nginx.template /etc/nginx/
@@ -198,7 +195,6 @@ RUN ln -s /etc/nginx/sites-available/${FILES_SERVER_NAME} /etc/nginx/sites-enabl
 EXPOSE 80/TCP
 EXPOSE 443/TCP
 EXPOSE 443/UDP
-USER nginx:nginx
 CMD ["/bin/sh", "-c", "exec nginx -g 'daemon off;';"]
 
 ###################
@@ -247,5 +243,4 @@ RUN envsubst < /etc/nginx/sites-templates/https/files.https.template > /etc/ngin
 EXPOSE 80/TCP
 EXPOSE 443/TCP
 EXPOSE 443/UDP
-USER nginx:nginx
 CMD ["/bin/sh", "-c", "exec nginx -g 'daemon off;';"]
