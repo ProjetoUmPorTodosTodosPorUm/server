@@ -9,6 +9,7 @@ DOMAINS=(
     "cms.projetoumportodostodosporum.org"
     "assets.projetoumportodostodosporum.org"
     "files.projetoumportodostodosporum.org"
+    "mail.projetoumportodostodosporum.org"
 )
 CERTBOT_DOMAINS=()
 for server in "${DOMAINS[@]}" 

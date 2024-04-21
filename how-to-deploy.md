@@ -23,9 +23,16 @@ $ apt install ufw
 $ ufw default deny incoming
 $ ufw default allow outgoing
 $ ufw allow ssh
+# web
 $ ufw allow 80
 $ ufw allow 443/tcp
 $ ufw allow 443/udp
+# email
+$ ufw allow 25
+$ ufw allow 143
+$ ufw allow 465
+$ ufw allow 587
+$ ufw allow 993
 $ ufw enable
 ```
 You may verify the status of the firewall running ``$ ufw status``.
