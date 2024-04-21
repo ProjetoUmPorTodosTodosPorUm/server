@@ -14,6 +14,7 @@ After [updating your nameservers with your domain registrar](https://docs.digita
 - ``www.assets.projetoumportodostodosporum.org``
 - ``files.projetoumportodostodosporum.org``
 - ``www.files.projetoumportodostodosporum.org``
+- ``mail.projetoumportodostodosporum.org``
 
 
 ## Firewall
@@ -104,6 +105,17 @@ Install [Docker Engine with Docker Compose](https://docs.docker.com/engine/insta
 
 You may use ``.env.preview.example`` as reference. 
 >**_Notice_** that **redis** and **postgresql** hosts are reached using the **service** names in docker-compose.yml file.
+
+## Remove Exim4
+```bash
+$ killall -9 exim 
+#or
+$ pkill -9 exim 
+
+#then
+$ apt-get purge exim4*
+```
+
 
 ## Start the Web Application
 - Inside the ``server`` directory, run ``$ ./scripts.sh start:prod`` 

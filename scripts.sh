@@ -9,7 +9,9 @@ DOMAINS=(
     "cms.projetoumportodostodosporum.org"
     "assets.projetoumportodostodosporum.org"
     "files.projetoumportodostodosporum.org"
-    "mail.projetoumportodostodosporum.org"
+    # using directly with $CERTBOT_DOMAINS
+    # probleming with www.mail@ domain, only mail@ working
+    # "mail.projetoumportodostodosporum.org"
 )
 CERTBOT_DOMAINS=()
 for server in "${DOMAINS[@]}" 
@@ -178,13 +180,13 @@ function certbotRenewDry() {
 
 # Certbot Get
 function certbotGet() {
-    echoCommand "$(echo "certbot certonly --nginx ${CERTBOT_DOMAINS[@]}")"
-    certbot certonly --nginx "${CERTBOT_DOMAINS[@]}"
+    echoCommand "$(echo "certbot certonly --nginx ${CERTBOT_DOMAINS[@]} -d mail.projetoumportodostodosporum.org")"
+    certbot certonly --nginx "${CERTBOT_DOMAINS[@]}" -d mail.projetoumportodostodosporum.org
 }
 
 function certbotGetStaging() {
-    echoCommand "$(echo "certbot certonly --nginx ${CERTBOT_DOMAINS[@]} --staging")"
-    certbot certonly --nginx "${CERTBOT_DOMAINS[@]}" --staging
+    echoCommand "$(echo "certbot certonly --nginx ${CERTBOT_DOMAINS[@]} -d mail.projetoumportodostodosporum.org --staging")"
+    certbot certonly --nginx "${CERTBOT_DOMAINS[@]}" -d mail.projetoumportodostodosporum.org --staging
 }
 
 # Nginx
