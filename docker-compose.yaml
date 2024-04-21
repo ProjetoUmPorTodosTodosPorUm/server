@@ -146,6 +146,8 @@ services:
       - mail_server_config:/tmp/docker-mailserver/
       - ./docker-data/dms/mail-logs/:/var/log/mail/
       - /etc/localtime:/etc/localtime:ro
+      - ./mailer/config/dovecot/10-custom.conf:/etc/dovecot/conf.d/10-custom.conf
+      - ./certs/:/certs
     deploy:
       restart_policy:
         condition: on-failure
