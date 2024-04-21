@@ -125,6 +125,44 @@ services:
     depends_on:
       - api
 
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:13
+    container_name: mailserver
+    hostname: mail.projetoumportodostodosporum.org
+    env_file: mailserver.env
+    # More information about the mail-server ports:
+    # https://docker-mailserver.github.io/docker-mailserver/latest/config/security/understanding-the-ports/
+    # To avoid conflicts with yaml base-60 float, DO NOT remove the quotation marks.
+    ports:
+      - "25:25"    # SMTP  (explicit TLS => STARTTLS, Authentication is DISABLED => use port 465/587 instead)
+      - "143:143"  # IMAP4 (explicit TLS => STARTTLS)
+      - "465:465"  # ESMTP (implicit TLS)
+      - "587:587"  # ESMTP (explicit TLS => STARTTLS)
+      - "993:993"  # IMAP4 (implicit TLS)
+    volumes:
+      - lets_encrypt:/etc/letsencrypt
+      - mail_server_data:/var/mail/
+      - mail_server_state:/var/mail-state/
+      - mail_server_config:/tmp/docker-mailserver/
+      - ./docker-data/dms/mail-logs/:/var/log/mail/
+      - /etc/localtime:/etc/localtime:ro
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        delay: 5s
+        window: 5s
+    stop_grace_period: 1m
+    # Uncomment if using `ENABLE_FAIL2BAN=1`:
+    # cap_add:
+    #   - NET_ADMIN
+    healthcheck:
+      test: "ss --listening --tcp | grep -P 'LISTEN.+:smtp' || exit 1"
+      timeout: 3s
+      retries: 0
+    depends_on:
+      - server
+
 networks:
   main_network:
     name: main_network
@@ -139,3 +177,9 @@ volumes:
     name: redis_volume
   lets_encrypt:
     name: lets_encrypt
+  mail_server_data:
+    name: mail_server_data
+  mail_server_state:
+    name: mail_server_state
+  mail_server_config:
+    name: mail_server_config
