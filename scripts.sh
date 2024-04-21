@@ -2,6 +2,7 @@
 DEV_COMPOSER_FILE="docker-compose-development.yaml"
 PREVIEW_COMPOSER_FILE="docker-compose-preview.yaml"
 PROD_COMPOSER_FILE="docker-compose.yaml"
+LETS_ENCRYPT_FOLDER="/etc/letsencrypt/live/projetoumportodostodosporum.org"
 
 DOMAINS=(
     "projetoumportodostodosporum.org"
@@ -201,6 +202,11 @@ function nginxHttp() {
 }
 
 function nginxHttps() {
+    if [ ! -d $LETS_ENCRYPT_FOLDER ]; then
+        echo "SSL certificates doesn't exist, running Nginx in HTTP only."
+        return 1
+    fi
+
     for server in "${DOMAINS[@]}" 
     do
         echoCommand "ln -sf /etc/nginx/sites-available/post.$server /etc/nginx/sites-enabled/$server"

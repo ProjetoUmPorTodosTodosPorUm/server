@@ -152,7 +152,7 @@ RUN ln -s /etc/nginx/sites-available/${FILES_SERVER_NAME} /etc/nginx/sites-enabl
 EXPOSE 80/TCP
 EXPOSE 443/TCP
 EXPOSE 443/UDP
-CMD ["/bin/sh", "-c", "exec nginx -g 'daemon off;';"]
+CMD ./scripts.sh nginx:https; nginx -g 'daemon off;';
 
 ###################
 # PREVIEW IMAGE
@@ -195,7 +195,7 @@ RUN ln -s /etc/nginx/sites-available/${FILES_SERVER_NAME} /etc/nginx/sites-enabl
 EXPOSE 80/TCP
 EXPOSE 443/TCP
 EXPOSE 443/UDP
-CMD ["/bin/sh", "-c", "exec nginx -g 'daemon off;';"]
+CMD ./scripts.sh nginx:https; nginx -g 'daemon off;';
 
 ###################
 # PROD IMAGE
@@ -243,4 +243,4 @@ RUN envsubst < /etc/nginx/sites-templates/https/files.https.template > /etc/ngin
 EXPOSE 80/TCP
 EXPOSE 443/TCP
 EXPOSE 443/UDP
-CMD ["/bin/sh", "-c", "exec nginx -g 'daemon off;';"]
+CMD ./scripts.sh nginx:https; nginx -g 'daemon off;';
