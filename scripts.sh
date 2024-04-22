@@ -3,6 +3,7 @@ DEV_COMPOSER_FILE="docker-compose-development.yaml"
 PREVIEW_COMPOSER_FILE="docker-compose-preview.yaml"
 PROD_COMPOSER_FILE="docker-compose.yaml"
 LETS_ENCRYPT_FOLDER="/etc/letsencrypt/live/projetoumportodostodosporum.org"
+BACKUP_DOCKER_FOLDER="/tmp/backup"
 
 DOMAINS=(
     "projetoumportodostodosporum.org"
@@ -10,9 +11,6 @@ DOMAINS=(
     "cms.projetoumportodostodosporum.org"
     "assets.projetoumportodostodosporum.org"
     "files.projetoumportodostodosporum.org"
-    # using directly with $CERTBOT_DOMAINS
-    # probleming with www.mail@ domain, only mail@ working
-    # "mail.projetoumportodostodosporum.org"
 )
 CERTBOT_DOMAINS=()
 for server in "${DOMAINS[@]}" 
@@ -34,6 +32,10 @@ build:prod          - build production server image and push to registry
 
 openssl:certificate - generate certificate
 openssl:trust       - trust localhost.crt systemwide (root)
+
+backup:run          - create .tar.gz files from volumes in ${BACKUP_DOCKER_FOLDER}
+backup:restore      - restores volume data from backup file
+backup:delete-old   - removes old backup files (30 days old)
 
 -- INSIDE CONTAINER --
 certbot:renew       - Cerbot renew process
@@ -181,13 +183,13 @@ function certbotRenewDry() {
 
 # Certbot Get
 function certbotGet() {
-    echoCommand "$(echo "certbot certonly --nginx ${CERTBOT_DOMAINS[@]} -d mail.projetoumportodostodosporum.org")"
-    certbot certonly --nginx "${CERTBOT_DOMAINS[@]}" -d mail.projetoumportodostodosporum.org
+    echoCommand "$(echo "certbot certonly --nginx ${CERTBOT_DOMAINS[@]}")"
+    certbot certonly --nginx "${CERTBOT_DOMAINS[@]}"
 }
 
 function certbotGetStaging() {
-    echoCommand "$(echo "certbot certonly --nginx ${CERTBOT_DOMAINS[@]} -d mail.projetoumportodostodosporum.org --staging")"
-    certbot certonly --nginx "${CERTBOT_DOMAINS[@]}" -d mail.projetoumportodostodosporum.org --staging
+    echoCommand "$(echo "certbot certonly --nginx ${CERTBOT_DOMAINS[@]} --staging")"
+    certbot certonly --nginx "${CERTBOT_DOMAINS[@]}" --staging
 }
 
 # Nginx
@@ -214,6 +216,165 @@ function nginxHttps() {
     done
     echoCommand "nginx -s reload"
     nginx -s reload
+}
+
+# Backup Docker Volumes
+function _backupDockerVolumes() {
+    local volume=$1
+    local service=$2
+    local dir=$3
+
+    if [ -z "$volume" ]; then
+        echo "You must pass the volume name. Exiting..."
+        exit 1
+    fi
+    
+    if [ -z "$service" ]; then
+        echo "You must pass the service name. Exiting..."
+        exit 1
+    fi
+
+    if [ -z "$dir" ]; then
+        echo "You must pass the directory inside the container that you want to backup. Exiting..."
+        exit 1
+    fi
+
+    # create backup directory
+    mkdir -p ${BACKUP_DOCKER_FOLDER}
+
+    echoCommand "docker run --rm -it \
+--volumes-from $service \
+-v $BACKUP_DOCKER_FOLDER/$volume/:/backup/ \
+alpine:3.19 \
+tar czfv /backup/$volume-$(date +%F).tar.gz $dir"
+    #docker run --rm -it \
+    #    --volumes-from "$service" \
+    #    -v "${BACKUP_DOCKER_FOLDER}/${volume}/:/backup/" \
+    #    alpine:3.19 \
+    #    tar czfv "/backup/${volume}-$(date +%F).tar.gz" "${dir}"
+}
+
+function backupDockerVolumes() {
+    # for volume names see docker-compose.yaml
+    # (volume serviceName)
+    FILES=("files" "server-api-1")
+    DB=("db" "server-db-1")
+    REDIS=("redis" "server-redis-1")
+    LETS_ENCRYPT=("lets_encrypt" "server")
+
+    _backupDockerVolumes ${FILES[0]} ${FILES[1]} "/usr/src/app/files" 
+    _backupDockerVolumes ${DB[0]} ${DB[1]} "/var/lib/postgresql/data"
+    _backupDockerVolumes ${REDIS[0]} ${REDIS[1]} "/data"
+    _backupDockerVolumes ${LETS_ENCRYPT[0]} ${LETS_ENCRYPT[1]} "/etc/letsencrypt"
+}
+
+function _restoreBackupDockerVolumes() {
+    if [ $# -ne 4 ]; then
+        echo "You must pass service containerDir fileFolder file. Exiting..."
+        exit 1
+    fi
+
+    local service=$1
+    local containerDir=$2
+    local fileFolder=$3
+    local file=$4
+
+    echoCommand "docker run --rm \
+--volume-from $service \
+-v $fileFolder:$containerDir \
+alpine:3.19 \
+cd $containerDir && tar xvf $file"
+
+    #docker run --rm \
+    #    --volume-from "$service" \
+    #    "-v $fileFolder:$containerDir" \
+    #    alpine:3.19 \
+    #    cd "$containerDir" && tar xvf "$file"
+}
+
+function _restoreBackupDockerVolumesUsage() {
+     local servicesInfo=(
+        "server:            restore lets_encrypt volume"
+        "server-api-1:      restore files volume"
+        "server-db-1:       restore db volume"
+        "server-redis-1:    restore redis volume"
+    )
+
+    echo -e "Usage:
+    backup:restore service
+    backup:restore service file\n"
+    echoCommand "Services available:"
+    for service in "${servicesInfo[@]}"; do
+        echo -e "$service"
+    done
+}
+
+function restoreBackupDockerVolumes() {
+    local services=(
+        "server" "server-api-1" "server-db-1" "server-redis-1"
+    )
+    # (volume, container directory)
+    declare -rA SERVICES=(
+        [server, 0]="lets_encrypt"
+        [server, 1]="/etc/letsencrypt"
+        [server-api-1, 0]="files"
+        [server-api-1, 1]="/user/src/app/files"
+        [server-db-1, 0]="db"
+        [server-db-1, 1]="/var/lib/postgresql/data"
+        [server-redis-1, 0]="redis"
+        [server-redis-1, 1]="/data"
+    )
+
+    local service=$2
+    local fileName=$3
+
+    # +1 since backup:restore counts as argument
+    # backup:restore service case
+    if [ $# -eq "$((1+1))" ]; then
+        local match=0
+        for srv in ${services[@]}; do
+            if [ $service == $srv ]; then
+                match=1
+                break
+            fi
+        done
+
+        if [ $match -eq 1 ]; then
+            local volume=${SERVICES[$service, 0]}
+            local volumeFolder="$BACKUP_DOCKER_FOLDER/$volume/"
+            
+            echoCommand "Available Dates:"
+            ls -lah $volumeFolder 
+        else
+            _restoreBackupDockerVolumesUsage
+            exit 1
+        fi
+
+    # fallback case
+    elif [ $# -ne "$((2+1))" ]; then
+        _restoreBackupDockerVolumesUsage
+        exit 1
+    fi
+
+    
+    local volume=${SERVICES[$service, 0]}
+    local file="$BACKUP_DOCKER_FOLDER/$volume/$fileName"
+
+    if [ ! -f "$file" ]; then
+        echo "File $file doesn't exist. Exiting..."
+        exit 1
+    fi
+
+    local fileFolder="$BACKUP_DOCKER_FOLDER/$volume/"
+    local containerDir=${SERVICES[$service, 1]}
+
+    _restoreBackupDockerVolumes $service $containerDir $fileFolder $file
+}
+
+function deleteOldBackupVolumes() {
+    # delete backups older than 30 days
+    echoCommand "find ${BACKUP_DOCKER_FOLDER}/ -type f -mtime +30 -delete"
+    find "${BACKUP_DOCKER_FOLDER}/" -type f -mtime +30 -delete
 }
 
 case $command in
@@ -253,6 +414,16 @@ case $command in
         nginxHttp;;
     nginx:https)
         nginxHttps;;
+
+    backup:run)
+        backupDockerVolumes;;
+    backup:list-files)
+        backupListFiles;;
+    backup:restore)
+        restoreBackupDockerVolumes "$@";;
+    backup:delete-old)
+        deleteOldBackupVolumes;;
+
     --help)
         echo "$HELP_MESSAGE";;
     *)
