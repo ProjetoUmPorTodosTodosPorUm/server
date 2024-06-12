@@ -15,7 +15,7 @@ DOMAINS=(
 CERTBOT_DOMAINS=()
 for server in "${DOMAINS[@]}" 
 do
-    CERTBOT_DOMAINS+=("-d $server" "-d www.$server")
+    CERTBOT_DOMAINS+=("-d $server")
 done
 
 HELP_MESSAGE="Available commands are:
@@ -183,13 +183,13 @@ function certbotRenewDry() {
 
 # Certbot Get
 function certbotGet() {
-    echoCommand "$(echo "certbot certonly --nginx ${CERTBOT_DOMAINS[@]}")"
-    certbot certonly --nginx "${CERTBOT_DOMAINS[@]}"
+    echoCommand "$(echo "certbot certonly --nginx -d www.projetoumportodostodosporum.org ${CERTBOT_DOMAINS[@]}")"
+    #certbot certonly --nginx -d www.projetoumportodostodosporum.org "${CERTBOT_DOMAINS[@]}"
 }
 
 function certbotGetStaging() {
-    echoCommand "$(echo "certbot certonly --nginx ${CERTBOT_DOMAINS[@]} --staging")"
-    certbot certonly --nginx "${CERTBOT_DOMAINS[@]}" --staging
+    echoCommand "$(echo "certbot certonly --nginx -d www.projetoumportodostodosporum.org ${CERTBOT_DOMAINS[@]} --staging")"
+    #certbot certonly --nginx -d www.projetoumportodostodosporum.org "${CERTBOT_DOMAINS[@]}" --staging
 }
 
 # Nginx

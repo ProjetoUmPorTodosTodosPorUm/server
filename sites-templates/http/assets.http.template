@@ -27,13 +27,13 @@ server {
 
   # Image, Document
   location ~* \.(?:jpg|jpeg|gif|png|webp|svg|pdf)$ {    
-    add_header "Cache-Control" "public";
-    expires 1M;
+    add_header "Cache-Control" "public,max-age=31536000";
+    expires 1y;
   }
 
   # Css, Js
   location ~* \.(?:css|js)$ {    
-    add_header "Cache-Control" "public";
+    add_header "Cache-Control" "public,max-age=31536000";
     expires 1y;
   }
 }
