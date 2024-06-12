@@ -7,7 +7,6 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-        max_attempts: 5
         delay: 5s
         window: 5s
     healthcheck:
@@ -15,6 +14,8 @@ services:
       interval: 1m
     volumes:
       - preview_files_volume:/var/www/files
+      # make logs accessible to fail2ban in host
+      - /var/log/nginx:/var/log/nginx:rw
     networks:
       - main_network
     ports:
@@ -31,7 +32,6 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-        max_attempts: 5
         delay: 5s
         window: 5s
     healthcheck:
@@ -47,7 +47,6 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-        max_attempts: 5
         delay: 5s
         window: 5s
     healthcheck:
@@ -65,7 +64,6 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-        max_attempts: 5
         delay: 5s
         window: 5s
     healthcheck:
@@ -86,7 +84,6 @@ services:
       replicas: 2
       restart_policy:
         condition: on-failure
-        max_attempts: 5
         delay: 5s
         window: 5s
     healthcheck:
@@ -103,7 +100,6 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-        max_attempts: 5
         delay: 5s
         window: 5s
     healthcheck:
