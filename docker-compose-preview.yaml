@@ -81,7 +81,7 @@ services:
   preview-web:
     image: project/web:preview
     deploy:
-      replicas: 2
+      #replicas: 2
       restart_policy:
         condition: on-failure
         delay: 5s
