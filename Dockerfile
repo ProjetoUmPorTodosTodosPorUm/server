@@ -174,8 +174,9 @@ ARG MAX_CONN_WEB=50
 ARG MAX_CONN_CMS=50
 
 # SSL
-COPY localhost.crt /etc/ssl/certs/localhost.crt
-COPY localhost.key /etc/ssl/private/localhost.key
+COPY localhost.cert.conf /etc/nginx/
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/localhost.key -out /etc/ssl/certs/localhost.crt -config /etc/nginx/localhost.cert.conf
+
 
 # Conf files
 COPY nginx.template /etc/nginx/
@@ -239,6 +240,9 @@ RUN envsubst < /etc/nginx/sites-templates/https/web.https.template > /etc/nginx/
 RUN envsubst < /etc/nginx/sites-templates/https/assets.https.template > /etc/nginx/sites-available/post.${ASSETS_SERVER_NAME}
 RUN envsubst < /etc/nginx/sites-templates/https/files.https.template > /etc/nginx/sites-available/post.${FILES_SERVER_NAME}
 
+# ADD Certbot cronjob
+RUN echo "0 30  *   *   *   /usr/bin/certbot renew --quiet" >> /etc/crontabs/root
+RUN crond -l 2 -L /var/log/crond.log
 
 EXPOSE 80/TCP
 EXPOSE 443/TCP

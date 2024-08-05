@@ -91,7 +91,7 @@ services:
   web:
     image: renangalvao/project:web-latest
     deploy:
-      replicas: 2
+      #replicas: 2
       restart_policy:
         condition: on-failure
         delay: 5s
