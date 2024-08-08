@@ -2,7 +2,7 @@
 # BUILDER - Modules
 ##################
 ARG NGINX_FROM_IMAGE=nginx:1.25.2-alpine
-FROM ${NGINX_FROM_IMAGE} as staging
+FROM ${NGINX_FROM_IMAGE} AS staging
 
 ARG ENABLED_MODULES="headers-more brotli"
 
@@ -68,7 +68,7 @@ RUN apk update \
 ###
 ## ATTENTION HERE
 ###
-FROM ${NGINX_FROM_IMAGE} as builder
+FROM ${NGINX_FROM_IMAGE} AS builder
 RUN --mount=type=bind,target=/tmp/packages/,source=/tmp/packages/,from=staging \
     . /tmp/packages/modules.env \
     && for module in $BUILT_MODULES; do \
@@ -82,10 +82,10 @@ SHELL ["/bin/sh", "-c"]
 ###################
 # BASE IMAGE
 ###################
-FROM builder as base-image
+FROM builder AS base-image
 
 # Certbot
-RUN apk add --update --no-cache certbot certbot-nginx bash openssl
+RUN apk add --update --no-cache certbot certbot-nginx bash openssl nano
 
 # Caching
 RUN mkdir -p /var/cache/nginx
@@ -114,7 +114,7 @@ COPY scripts.sh ./
 ###################
 # DEV IMAGE
 ###################
-FROM base-image as dev-image
+FROM base-image AS dev-image
 
 ARG DOLLAR="$"
 ARG BACKEND_SERVER_URL=localhost:3000
@@ -157,7 +157,7 @@ CMD ./scripts.sh nginx:https; nginx -g 'daemon off;';
 ###################
 # PREVIEW IMAGE
 ###################
-FROM base-image as preview-image
+FROM base-image AS preview-image
 
 ARG DOLLAR="$"
 ARG BACKEND_SERVER_URL=preview-api:3000
@@ -201,7 +201,7 @@ CMD ./scripts.sh nginx:https; nginx -g 'daemon off;';
 ###################
 # PROD IMAGE
 ###################
-FROM base-image as prod-image
+FROM base-image AS prod-image
 
 ARG DOLLAR="$"
 ARG BACKEND_SERVER_URL=api:3000

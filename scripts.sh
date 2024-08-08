@@ -30,9 +30,6 @@ stop:prod           - stop project in production mode
 build:preview       - build preview server image
 build:prod          - build production server image and push to registry
 
-openssl:certificate - generate certificate
-openssl:trust       - trust localhost.crt systemwide (root)
-
 backup:run          - create .tar.gz files from volumes in ${BACKUP_DOCKER_FOLDER}
 backup:restore      - restores volume data from backup file
 backup:delete-old   - removes old backup files (30 days old)
@@ -83,24 +80,6 @@ function isRoot() {
     fi
 }
 
-# OpenSSL
-function openSSL() {
-    echoCommand "openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 365 -keyout localhost.key -out localhost.crt -config localhost.cert.conf"
-    openssl req -x509 -newkey rsa:2048 -nodes -sha256 -keyout localhost.key -out localhost.crt -config localhost.cert.conf
-}
-
-function trustCertificateSystemWide() {
-    isRoot
-    echoCommand "trust anchor localhost.crt"
-    trust anchor localhost.crt
-
-    # fallback for p11-kit: no configured writable location to store anchors
-    # https://wiki.archlinux.org/title/User:Grawity/Adding_a_trusted_CA_certificate 3
-    echoCommand "mkdir -p /usr/local/share/ca-certificates && cp localhost.crt /usr/local/share/ca-certificates/"
-    mkdir -p /usr/local/share/ca-certificates && cp localhost.crt /usr/local/share/ca-certificates/
-    echoCommand "sudo update-ca-certificates"
-    sudo update-ca-certificates
-}
 
 # Development
 function dockerDevDown() {
@@ -221,7 +200,7 @@ function nginxHttps() {
 # Backup Docker Volumes
 function _backupDockerVolumes() {
     local volume=$1
-    local service=$2
+    local container=$2
     local dir=$3
 
     if [ -z "$volume" ]; then
@@ -229,8 +208,8 @@ function _backupDockerVolumes() {
         exit 1
     fi
     
-    if [ -z "$service" ]; then
-        echo "You must pass the service name. Exiting..."
+    if [ -z "$container" ]; then
+        echo "You must pass the container name. Exiting..."
         exit 1
     fi
 
@@ -243,23 +222,24 @@ function _backupDockerVolumes() {
     mkdir -p ${BACKUP_DOCKER_FOLDER}
 
     echoCommand "docker run --rm -it \
---volumes-from $service \
+--volumes-from $container \
 -v $BACKUP_DOCKER_FOLDER/$volume/:/backup/ \
 alpine:3.19 \
 tar czfv /backup/$volume-$(date +%F).tar.gz $dir"
-    #docker run --rm -it \
-    #    --volumes-from "$service" \
-    #    -v "${BACKUP_DOCKER_FOLDER}/${volume}/:/backup/" \
-    #    alpine:3.19 \
-    #    tar czfv "/backup/${volume}-$(date +%F).tar.gz" "${dir}"
+
+docker run --rm -it \
+    --volumes-from "$container" \
+    -v "${BACKUP_DOCKER_FOLDER}/${volume}/:/backup/" \
+    alpine:3.19 \
+    tar czfv "/backup/${volume}-$(date +%F).tar.gz" "${dir}"
 }
 
 function backupDockerVolumes() {
     # for volume names see docker-compose.yaml
-    # (volume serviceName)
-    FILES=("files" "server-api-1")
-    DB=("db" "server-db-1")
-    REDIS=("redis" "server-redis-1")
+    # (volume container_name)
+    FILES=("files" "api")
+    DB=("db" "db")
+    REDIS=("redis" "redis")
     LETS_ENCRYPT=("lets_encrypt" "server")
 
     _backupDockerVolumes ${FILES[0]} ${FILES[1]} "/usr/src/app/files" 
@@ -270,77 +250,77 @@ function backupDockerVolumes() {
 
 function _restoreBackupDockerVolumes() {
     if [ $# -ne 4 ]; then
-        echo "You must pass service containerDir fileFolder file. Exiting..."
+        echo "You must pass <container> <container_dir> <file_folder> <file>. Exiting..."
         exit 1
     fi
 
-    local service=$1
+    local container=$1
     local containerDir=$2
     local fileFolder=$3
     local file=$4
 
     echoCommand "docker run --rm \
---volume-from $service \
+--volume-from $container \
 -v $fileFolder:$containerDir \
 alpine:3.19 \
 cd $containerDir && tar xvf $file"
 
     #docker run --rm \
-    #    --volume-from "$service" \
+    #    --volume-from "$container" \
     #    "-v $fileFolder:$containerDir" \
     #    alpine:3.19 \
     #    cd "$containerDir" && tar xvf "$file"
 }
 
 function _restoreBackupDockerVolumesUsage() {
-     local servicesInfo=(
-        "server:            restore lets_encrypt volume"
-        "server-api-1:      restore files volume"
-        "server-db-1:       restore db volume"
-        "server-redis-1:    restore redis volume"
+     local containersInfo=(
+        "server     - restore lets_encrypt volume"
+        "api        - restore files volume"
+        "db         - restore db volume"
+        "redis      - restore redis volume"
     )
 
     echo -e "Usage:
-    backup:restore service
-    backup:restore service file\n"
+    backup:restore <container>      - list available restore files
+    backup:restore <container> file - restore container data with file\n"
     echoCommand "Services available:"
-    for service in "${servicesInfo[@]}"; do
-        echo -e "$service"
+    for container in "${containersInfo[@]}"; do
+        echo -e "$container"
     done
 }
 
 function restoreBackupDockerVolumes() {
-    local services=(
-        "server" "server-api-1" "server-db-1" "server-redis-1"
+    local containers=(
+        "server" "api" "db" "redis"
     )
     # (volume, container directory)
-    declare -rA SERVICES=(
+    declare -rA CONTAINERS=(
         [server, 0]="lets_encrypt"
         [server, 1]="/etc/letsencrypt"
-        [server-api-1, 0]="files"
-        [server-api-1, 1]="/user/src/app/files"
-        [server-db-1, 0]="db"
-        [server-db-1, 1]="/var/lib/postgresql/data"
-        [server-redis-1, 0]="redis"
-        [server-redis-1, 1]="/data"
+        [api, 0]="files"
+        [api, 1]="/user/src/app/files"
+        [db, 0]="db"
+        [db, 1]="/var/lib/postgresql/data"
+        [redis, 0]="redis"
+        [redis, 1]="/data"
     )
 
-    local service=$2
+    local container=$2
     local fileName=$3
 
     # +1 since backup:restore counts as argument
-    # backup:restore service case
+    # backup:restore container case
     if [ $# -eq "$((1+1))" ]; then
         local match=0
-        for srv in ${services[@]}; do
-            if [ $service == $srv ]; then
+        for ctnr in ${containers[@]}; do
+            if [ $container == $ctnr ]; then
                 match=1
                 break
             fi
         done
 
         if [ $match -eq 1 ]; then
-            local volume=${SERVICES[$service, 0]}
+            local volume=${CONTAINERS[$container, 0]}
             local volumeFolder="$BACKUP_DOCKER_FOLDER/$volume/"
             
             echoCommand "Available Dates:"
@@ -357,7 +337,7 @@ function restoreBackupDockerVolumes() {
     fi
 
     
-    local volume=${SERVICES[$service, 0]}
+    local volume=${CONTAINERS[$container, 0]}
     local file="$BACKUP_DOCKER_FOLDER/$volume/$fileName"
 
     if [ ! -f "$file" ]; then
@@ -366,9 +346,9 @@ function restoreBackupDockerVolumes() {
     fi
 
     local fileFolder="$BACKUP_DOCKER_FOLDER/$volume/"
-    local containerDir=${SERVICES[$service, 1]}
+    local containerDir=${CONTAINERS[$container, 1]}
 
-    _restoreBackupDockerVolumes $service $containerDir $fileFolder $file
+    _restoreBackupDockerVolumes $container $containerDir $fileFolder $file
 }
 
 function deleteOldBackupVolumes() {
@@ -395,11 +375,6 @@ case $command in
         dockerBuildPreview;;
     build:prod)
         dockerBuildProduction;;
-
-    openssl:certificate)
-        openSSL;;
-    openssl:trust)
-        trustCertificateSystemWide;;
 
     certbot:renew)
         certbotRenew;;

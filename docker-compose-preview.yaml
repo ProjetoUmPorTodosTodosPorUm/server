@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   preview-server:
     container_name: server
@@ -24,6 +22,7 @@ services:
       - 443:443/udp
 
   preview-db:
+    container_name: db
     image: postgres:13-alpine
     environment:
       - POSTGRES_USER=project
@@ -43,6 +42,7 @@ services:
       - main_network
 
   preview-redis:
+    container_name: redis
     image: redis:7.2-alpine
     deploy:
       restart_policy:
@@ -58,6 +58,7 @@ services:
       - main_network
 
   preview-api:
+    container_name: api
     image: project/api:preview
     env_file:
       - .env.preview
@@ -79,6 +80,7 @@ services:
       - preview-redis
 
   preview-web:
+    container_name: web
     image: project/web:preview
     deploy:
       #replicas: 2
@@ -96,6 +98,7 @@ services:
       - preview-api
 
   preview-cms:
+    container_name: cms
     image: project/cms:preview
     deploy:
       restart_policy:
