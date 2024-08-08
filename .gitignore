@@ -1,5 +1,4 @@
 .env.dev
 .env.preview
 scripts/
-localhost.crt
-localhost.key
+k6-tests/
