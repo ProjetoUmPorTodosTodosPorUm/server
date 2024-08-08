@@ -3,7 +3,17 @@ DEV_COMPOSER_FILE="docker-compose-development.yaml"
 PREVIEW_COMPOSER_FILE="docker-compose-preview.yaml"
 PROD_COMPOSER_FILE="docker-compose.yaml"
 LETS_ENCRYPT_FOLDER="/etc/letsencrypt/live/projetoumportodostodosporum.org"
+
 BACKUP_DOCKER_FOLDER="/tmp/backup"
+DOCKER_VOLUMES_FOLDER="/var/lib/docker/volumes"
+
+##
+# Sends the daily backup to Backup Server
+# Backup Server handles weekly, monthly and remove old ones
+# Keep the 7 most recent locally
+##
+BACKUP_DEST_FOLDER="/backup/projetoumportodostodosporum.org/daily"
+BACKUP_DEST_IP="142.93.245.106"
 
 DOMAINS=(
     "projetoumportodostodosporum.org"
@@ -31,8 +41,9 @@ build:preview       - build preview server image
 build:prod          - build production server image and push to registry
 
 backup:run          - create .tar.gz files from volumes in ${BACKUP_DOCKER_FOLDER}
+backup:external     - sends backup to external VPS
 backup:restore      - restores volume data from backup file
-backup:delete-old   - removes old backup files (30 days old)
+backup:delete-old   - removes old backup files (7 day old)
 
 -- INSIDE CONTAINER --
 certbot:renew       - Cerbot renew process
@@ -81,7 +92,9 @@ function isRoot() {
 }
 
 
+##
 # Development
+##
 function dockerDevDown() {
     readEnvFile ".env.dev"
     echoCommand "docker compose -f $DEV_COMPOSER_FILE down --remove-orphans -v"
@@ -98,7 +111,10 @@ function dockerDevRestart() {
     dockerDevDown && dockerDevUp
 }
 
+
+##
 # Preview
+##
 function dockerPreviewDown() {
     readEnvFile ".env.preview"
     echoCommand "docker compose -f $PREVIEW_COMPOSER_FILE down --remove-orphans"
@@ -115,7 +131,10 @@ function dockerPreviewRestart() {
     dockerPreviewDown && dockerPreviewUp
 }
 
+
+##
 # Production
+##
 function dockerProductionDown() {
     echoCommand "docker compose -f $PROD_COMPOSER_FILE down --remove-orphans"
     docker compose -f "$PROD_COMPOSER_FILE" down --remove-orphans
@@ -130,13 +149,19 @@ function dockerProductionRestart() {
     dockerProductionDown && dockerProductionUp
 }
 
+
+##
 # Build Preview
+##
 function dockerBuildPreview() {
     echoCommand "docker build --no-cache --target preview-image -t project/server:preview ."
     docker build --no-cache --target preview-image -t project/server:preview .
 }
 
+
+##
 # Build Production
+##
 function postDockerBuildProduction() {
     echoCommand "docker push --all-tags renangalvao/project"
     docker push --all-tags renangalvao/project
@@ -149,7 +174,10 @@ function dockerBuildProduction() {
     postDockerBuildProduction
 }
 
+
+##
 # Certbot Renew
+##
 function certbotRenew() {
     echoCommand "certbot renew"
     certbot renew
@@ -160,7 +188,9 @@ function certbotRenewDry() {
     certbot renew --dry-run
 }
 
+##
 # Certbot Get
+##
 function certbotGet() {
     echoCommand "$(echo "certbot certonly --nginx -d www.projetoumportodostodosporum.org ${CERTBOT_DOMAINS[@]}")"
     #certbot certonly --nginx -d www.projetoumportodostodosporum.org "${CERTBOT_DOMAINS[@]}"
@@ -171,7 +201,10 @@ function certbotGetStaging() {
     #certbot certonly --nginx -d www.projetoumportodostodosporum.org "${CERTBOT_DOMAINS[@]}" --staging
 }
 
+
+##
 # Nginx
+##
 function nginxHttp() {
     for server in "${DOMAINS[@]}" 
     do
@@ -197,79 +230,58 @@ function nginxHttps() {
     nginx -s reload
 }
 
+
+##
 # Backup Docker Volumes
+##
 function _backupDockerVolumes() {
     local volume=$1
-    local container=$2
-    local dir=$3
 
     if [ -z "$volume" ]; then
         echo "You must pass the volume name. Exiting..."
-        exit 1
-    fi
-    
-    if [ -z "$container" ]; then
-        echo "You must pass the container name. Exiting..."
-        exit 1
-    fi
-
-    if [ -z "$dir" ]; then
-        echo "You must pass the directory inside the container that you want to backup. Exiting..."
         exit 1
     fi
 
     # create backup directory
     mkdir -p ${BACKUP_DOCKER_FOLDER}
 
-    echoCommand "docker run --rm -it \
---volumes-from $container \
--v $BACKUP_DOCKER_FOLDER/$volume/:/backup/ \
-alpine:3.19 \
-tar czfv /backup/$volume-$(date +%F).tar.gz $dir"
-
-docker run --rm -it \
-    --volumes-from "$container" \
-    -v "${BACKUP_DOCKER_FOLDER}/${volume}/:/backup/" \
-    alpine:3.19 \
-    tar czfv "/backup/${volume}-$(date +%F).tar.gz" "${dir}"
+    echoCommand "tar czfv $BACKUP_DOCKER_FOLDER/$volume/$volume-$(date +%F).tar.gz -C $DOCKER_VOLUMES_FOLDER/$volume ."
+    tar czfv "${BACKUP_DOCKER_FOLDER}/${volume}/${volume}-$(date +%F).tar.gz" -C "${DOCKER_VOLUMES_FOLDER}/${volume}" .
 }
 
 function backupDockerVolumes() {
     # for volume names see docker-compose.yaml
-    # (volume container_name)
-    FILES=("files" "api")
-    DB=("db" "db")
-    REDIS=("redis" "redis")
-    LETS_ENCRYPT=("lets_encrypt" "server")
+    _backupDockerVolumes "files"
+    _backupDockerVolumes "db"
+    _backupDockerVolumes "redis"
+    _backupDockerVolumes "lets_encrypt"
+    backupExternal
+}
 
-    _backupDockerVolumes ${FILES[0]} ${FILES[1]} "/usr/src/app/files" 
-    _backupDockerVolumes ${DB[0]} ${DB[1]} "/var/lib/postgresql/data"
-    _backupDockerVolumes ${REDIS[0]} ${REDIS[1]} "/data"
-    _backupDockerVolumes ${LETS_ENCRYPT[0]} ${LETS_ENCRYPT[1]} "/etc/letsencrypt"
+function backupExternal() {
+    echoCommand "rsync -avz $BACKUP_DOCKER_FOLDER root@$BACKUP_DEST_IP:$BACKUP_DEST_FOLDER"
+    rsync -avz "$BACKUP_DOCKER_FOLDER" "root@${BACKUP_DEST_IP}:${BACKUP_DEST_FOLDER}"
 }
 
 function _restoreBackupDockerVolumes() {
-    if [ $# -ne 4 ]; then
-        echo "You must pass <container> <container_dir> <file_folder> <file>. Exiting..."
+    if [ $# -ne 3 ]; then
+        echo "You must pass <container/service> <volume> <file_name>. Exiting..."
         exit 1
     fi
 
+    # service names = container names, see docker-compose.yaml file
     local container=$1
-    local containerDir=$2
-    local fileFolder=$3
-    local file=$4
+    local volume=$2
+    local fileName=$3
 
-    echoCommand "docker run --rm \
---volume-from $container \
--v $fileFolder:$containerDir \
-alpine:3.19 \
-cd $containerDir && tar xvf $file"
+    echoCommand "docker container stop $container"
+    docker container stop "$container"
 
-    #docker run --rm \
-    #    --volume-from "$container" \
-    #    "-v $fileFolder:$containerDir" \
-    #    alpine:3.19 \
-    #    cd "$containerDir" && tar xvf "$file"
+    echoCommand "tar xzvf $BACKUP_DOCKER_FOLDER/$volume/$fileName -C $DOCKER_VOLUMES_FOLDER/$volume/"
+    tar xzvf "${BACKUP_DOCKER_FOLDER}/${volume}/${fileName}" -C "${DOCKER_VOLUMES_FOLDER}/${volume}/"
+
+    echoCommand "docker compose up -d --no-deps $container"
+    docker compose up -d --no-deps "$container"
 }
 
 function _restoreBackupDockerVolumesUsage() {
@@ -293,16 +305,12 @@ function restoreBackupDockerVolumes() {
     local containers=(
         "server" "api" "db" "redis"
     )
-    # (volume, container directory)
+    # (volume)
     declare -rA CONTAINERS=(
         [server, 0]="lets_encrypt"
-        [server, 1]="/etc/letsencrypt"
         [api, 0]="files"
-        [api, 1]="/user/src/app/files"
         [db, 0]="db"
-        [db, 1]="/var/lib/postgresql/data"
         [redis, 0]="redis"
-        [redis, 1]="/data"
     )
 
     local container=$2
@@ -324,7 +332,8 @@ function restoreBackupDockerVolumes() {
             local volumeFolder="$BACKUP_DOCKER_FOLDER/$volume/"
             
             echoCommand "Available Dates:"
-            ls -lah $volumeFolder 
+            ls -lah $volumeFolder
+            exit 0
         else
             _restoreBackupDockerVolumesUsage
             exit 1
@@ -345,16 +354,13 @@ function restoreBackupDockerVolumes() {
         exit 1
     fi
 
-    local fileFolder="$BACKUP_DOCKER_FOLDER/$volume/"
-    local containerDir=${CONTAINERS[$container, 1]}
-
-    _restoreBackupDockerVolumes $container $containerDir $fileFolder $file
+    _restoreBackupDockerVolumes $container $volume $fileName
 }
 
 function deleteOldBackupVolumes() {
-    # delete backups older than 30 days
-    echoCommand "find ${BACKUP_DOCKER_FOLDER}/ -type f -mtime +30 -delete"
-    find "${BACKUP_DOCKER_FOLDER}/" -type f -mtime +30 -delete
+    # delete backups older than 7 days
+    echoCommand "find ${BACKUP_DOCKER_FOLDER}/ -type f -mtime +7 -delete"
+    find "${BACKUP_DOCKER_FOLDER}/" -type f -mtime +7 -delete
 }
 
 case $command in
@@ -392,8 +398,8 @@ case $command in
 
     backup:run)
         backupDockerVolumes;;
-    backup:list-files)
-        backupListFiles;;
+    backup:external)
+        backupExternal;;
     backup:restore)
         restoreBackupDockerVolumes "$@";;
     backup:delete-old)

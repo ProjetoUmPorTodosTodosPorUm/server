@@ -23,7 +23,6 @@ services:
       - 443:443/udp
 
   db:
-    container_name: db
     image: postgres:13-alpine
     environment:
       - POSTGRES_USER=$DB_USER
@@ -43,7 +42,6 @@ services:
       - main_network
 
   redis:
-    container_name: redis
     image: redis:7.2-alpine
     deploy:
       restart_policy:
@@ -59,7 +57,6 @@ services:
       - main_network
 
   api:
-    container_name: api
     image: renangalvao/project:api-latest
     environment:
       - ACCESS_TOKEN_JWT_SECRET=$ACCESS_TOKEN_JWT_SECRET
@@ -90,7 +87,6 @@ services:
       - redis
 
   web:
-    container_name: web
     image: renangalvao/project:web-latest
     deploy:
       #replicas: 2
@@ -108,7 +104,6 @@ services:
       - api
 
   cms:
-    container_name: cms
     image: renangalvao/project:cms-latest
     deploy:
       restart_policy:
