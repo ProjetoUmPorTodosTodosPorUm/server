@@ -4,17 +4,6 @@ PREVIEW_COMPOSER_FILE="docker-compose-preview.yaml"
 PROD_COMPOSER_FILE="docker-compose.yaml"
 LETS_ENCRYPT_FOLDER="/etc/letsencrypt/live/projetoumportodostodosporum.org"
 
-BACKUP_DOCKER_FOLDER="/tmp/backup"
-DOCKER_VOLUMES_FOLDER="/var/lib/docker/volumes"
-
-##
-# Sends the daily backup to Backup Server
-# Backup Server handles weekly, monthly and remove old ones
-# Keep the 7 most recent locally
-##
-BACKUP_DEST_FOLDER="/backup/projetoumportodostodosporum.org/daily"
-BACKUP_DEST_IP="142.93.245.106"
-
 DOMAINS=(
     "projetoumportodostodosporum.org"
     "api.projetoumportodostodosporum.org"
@@ -39,11 +28,6 @@ stop:prod           - stop project in production mode
 
 build:preview       - build preview server image
 build:prod          - build production server image and push to registry
-
-backup:run          - create .tar.gz files from volumes in ${BACKUP_DOCKER_FOLDER}
-backup:external     - sends backup to external VPS
-backup:restore      - restores volume data from backup file
-backup:delete-old   - removes old backup files (7 day old)
 
 -- INSIDE CONTAINER --
 certbot:renew       - Cerbot renew process
@@ -193,12 +177,12 @@ function certbotRenewDry() {
 ##
 function certbotGet() {
     echoCommand "$(echo "certbot certonly --nginx -d www.projetoumportodostodosporum.org ${CERTBOT_DOMAINS[@]}")"
-    #certbot certonly --nginx -d www.projetoumportodostodosporum.org "${CERTBOT_DOMAINS[@]}"
+    certbot certonly --nginx -d www.projetoumportodostodosporum.org "${CERTBOT_DOMAINS[@]}"
 }
 
 function certbotGetStaging() {
     echoCommand "$(echo "certbot certonly --nginx -d www.projetoumportodostodosporum.org ${CERTBOT_DOMAINS[@]} --staging")"
-    #certbot certonly --nginx -d www.projetoumportodostodosporum.org "${CERTBOT_DOMAINS[@]}" --staging
+    certbot certonly --nginx -d www.projetoumportodostodosporum.org "${CERTBOT_DOMAINS[@]}" --staging
 }
 
 
@@ -230,138 +214,6 @@ function nginxHttps() {
     nginx -s reload
 }
 
-
-##
-# Backup Docker Volumes
-##
-function _backupDockerVolumes() {
-    local volume=$1
-
-    if [ -z "$volume" ]; then
-        echo "You must pass the volume name. Exiting..."
-        exit 1
-    fi
-
-    # create backup directory
-    mkdir -p ${BACKUP_DOCKER_FOLDER}
-
-    echoCommand "tar czfv $BACKUP_DOCKER_FOLDER/$volume/$volume-$(date +%F).tar.gz -C $DOCKER_VOLUMES_FOLDER/$volume ."
-    tar czfv "${BACKUP_DOCKER_FOLDER}/${volume}/${volume}-$(date +%F).tar.gz" -C "${DOCKER_VOLUMES_FOLDER}/${volume}" .
-}
-
-function backupDockerVolumes() {
-    # for volume names see docker-compose.yaml
-    _backupDockerVolumes "files"
-    _backupDockerVolumes "db"
-    _backupDockerVolumes "redis"
-    _backupDockerVolumes "lets_encrypt"
-    backupExternal
-}
-
-function backupExternal() {
-    echoCommand "rsync -avz $BACKUP_DOCKER_FOLDER root@$BACKUP_DEST_IP:$BACKUP_DEST_FOLDER"
-    rsync -avz "$BACKUP_DOCKER_FOLDER" "root@${BACKUP_DEST_IP}:${BACKUP_DEST_FOLDER}"
-}
-
-function _restoreBackupDockerVolumes() {
-    if [ $# -ne 3 ]; then
-        echo "You must pass <container/service> <volume> <file_name>. Exiting..."
-        exit 1
-    fi
-
-    # service names = container names, see docker-compose.yaml file
-    local container=$1
-    local volume=$2
-    local fileName=$3
-
-    echoCommand "docker container stop $container"
-    docker container stop "$container"
-
-    echoCommand "tar xzvf $BACKUP_DOCKER_FOLDER/$volume/$fileName -C $DOCKER_VOLUMES_FOLDER/$volume/"
-    tar xzvf "${BACKUP_DOCKER_FOLDER}/${volume}/${fileName}" -C "${DOCKER_VOLUMES_FOLDER}/${volume}/"
-
-    echoCommand "docker compose up -d --no-deps $container"
-    docker compose up -d --no-deps "$container"
-}
-
-function _restoreBackupDockerVolumesUsage() {
-     local containersInfo=(
-        "server     - restore lets_encrypt volume"
-        "api        - restore files volume"
-        "db         - restore db volume"
-        "redis      - restore redis volume"
-    )
-
-    echo -e "Usage:
-    backup:restore <container>      - list available restore files
-    backup:restore <container> file - restore container data with file\n"
-    echoCommand "Services available:"
-    for container in "${containersInfo[@]}"; do
-        echo -e "$container"
-    done
-}
-
-function restoreBackupDockerVolumes() {
-    local containers=(
-        "server" "api" "db" "redis"
-    )
-    # (volume)
-    declare -rA CONTAINERS=(
-        [server, 0]="lets_encrypt"
-        [api, 0]="files"
-        [db, 0]="db"
-        [redis, 0]="redis"
-    )
-
-    local container=$2
-    local fileName=$3
-
-    # +1 since backup:restore counts as argument
-    # backup:restore container case
-    if [ $# -eq "$((1+1))" ]; then
-        local match=0
-        for ctnr in ${containers[@]}; do
-            if [ $container == $ctnr ]; then
-                match=1
-                break
-            fi
-        done
-
-        if [ $match -eq 1 ]; then
-            local volume=${CONTAINERS[$container, 0]}
-            local volumeFolder="$BACKUP_DOCKER_FOLDER/$volume/"
-            
-            echoCommand "Available Dates:"
-            ls -lah $volumeFolder
-            exit 0
-        else
-            _restoreBackupDockerVolumesUsage
-            exit 1
-        fi
-
-    # fallback case
-    elif [ $# -ne "$((2+1))" ]; then
-        _restoreBackupDockerVolumesUsage
-        exit 1
-    fi
-
-    
-    local volume=${CONTAINERS[$container, 0]}
-    local file="$BACKUP_DOCKER_FOLDER/$volume/$fileName"
-
-    if [ ! -f "$file" ]; then
-        echo "File $file doesn't exist. Exiting..."
-        exit 1
-    fi
-
-    _restoreBackupDockerVolumes $container $volume $fileName
-}
-
-function deleteOldBackupVolumes() {
-    # delete backups older than 7 days
-    echoCommand "find ${BACKUP_DOCKER_FOLDER}/ -type f -mtime +7 -delete"
-    find "${BACKUP_DOCKER_FOLDER}/" -type f -mtime +7 -delete
-}
 
 case $command in
     start:dev)
@@ -395,15 +247,6 @@ case $command in
         nginxHttp;;
     nginx:https)
         nginxHttps;;
-
-    backup:run)
-        backupDockerVolumes;;
-    backup:external)
-        backupExternal;;
-    backup:restore)
-        restoreBackupDockerVolumes "$@";;
-    backup:delete-old)
-        deleteOldBackupVolumes;;
 
     --help)
         echo "$HELP_MESSAGE";;

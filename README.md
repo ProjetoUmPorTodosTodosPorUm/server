@@ -27,6 +27,7 @@ You need to [set these variables session-wide](https://help.ubuntu.com/community
 - ``DB_PASSWORD``
 - ``REDIS_HOST``
 - ``REDIS_PORT``
+- ``SESSION_SECRET``
 
 
 ## Run
@@ -43,6 +44,7 @@ You need to [set these variables session-wide](https://help.ubuntu.com/community
 ./scripts.sh start:prod
 ```
 
+
 ## Build
 ### Preview
 ```bash
@@ -53,8 +55,9 @@ You need to [set these variables session-wide](https://help.ubuntu.com/community
 ./scripts.sh build:prod
 ```
 
+
 ## Certbot
-Inside Server's container as root user, use ``docker exec -it --user root server sh``.
+Inside Server's container as root user: ``docker exec -it --user root server sh``.
 
 - ``./scripts.sh certbot:renew``       - Cerbot renew process
 - ``./scripts.sh certbot:renew-dry``   - Cerbot renew test process
@@ -69,12 +72,11 @@ Inside Server's container as root user, use ``docker exec -it --user root server
 
 
 ## Nginx
-Inside Server's container as root user, use ``docker exec -it --user root server sh``.
+Inside Server's container as root user: ``docker exec -it --user root server sh``.
 
-```sh
-$ ./scripts.sh nginx:http          - change server conf to http only (pre SSL certificates)
-$ ./scripts.sh nginx:https         - change server conf to https (post SSL certificates)
-```
+- ``./scripts.sh nginx:http``          - change server conf to http only (pre SSL certificates)
+- ``./scripts.sh nginx:https``         - change server conf to https (post SSL certificates)
+
 
 
 ## Related Repositories

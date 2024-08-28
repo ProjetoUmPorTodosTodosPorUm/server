@@ -89,7 +89,6 @@ services:
   web:
     image: renangalvao/project:web-latest
     deploy:
-      #replicas: 2
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -105,6 +104,10 @@ services:
 
   cms:
     image: renangalvao/project:cms-latest
+    environment:
+      - REDIS_HOST=$REDIS_HOST
+      - REDIS_PORT=$REDIS_PORT
+      - SESSION_SECRET=$SESSION_SECRET
     deploy:
       restart_policy:
         condition: on-failure

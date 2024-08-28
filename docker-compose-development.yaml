@@ -12,7 +12,6 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-        max_attempts: 5
         delay: 5s
         window: 5s
     healthcheck:
@@ -39,7 +38,6 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-        max_attempts: 5
         delay: 5s
         window: 5s
     healthcheck:
@@ -58,7 +56,6 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-        max_attempts: 5
         delay: 5s
         window: 5s
     healthcheck:
@@ -78,8 +75,8 @@ networks:
 
 volumes:
   files_volume:
-    name: files
+    name: files_dev
   db_volume:
-    name: db
+    name: db_dev
   redis_volume:
-    name: redis_volume
+    name: redis_dev
