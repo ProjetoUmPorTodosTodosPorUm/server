@@ -1,7 +1,7 @@
 ##################
 # BUILDER - Modules
 ##################
-ARG NGINX_FROM_IMAGE=nginx:1.25.2-alpine
+ARG NGINX_FROM_IMAGE=nginx:1.26.1-alpine
 FROM ${NGINX_FROM_IMAGE} AS staging
 
 ARG ENABLED_MODULES="headers-more brotli"

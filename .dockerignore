@@ -4,6 +4,6 @@ docker-compose*
 
 .dockerignore
 Dockerfile
-scripts/
+k6-tests/
 
 !scripts.sh

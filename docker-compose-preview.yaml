@@ -11,9 +11,7 @@ services:
       test: curl -f localhost/health || exit 1
       interval: 1m
     volumes:
-      - preview_files_volume:/var/www/files
-      # make logs accessible to fail2ban in host
-      - /var/log/nginx:/var/log/nginx:rw
+      - files_volume:/var/www/files
     networks:
       - main_network
     ports:
@@ -36,7 +34,7 @@ services:
       test: pg_isready -d project
       interval: 1m
     volumes:
-      - preview_db_volume:/var/lib/postgresql/data
+      - db_volume:/var/lib/postgresql/data
     networks:
       - main_network
 
@@ -51,7 +49,7 @@ services:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
       interval: 1m
     volumes:
-      - preview_redis_volume:/data
+      - redis_volume:/data
     networks:
       - main_network
 
@@ -69,7 +67,7 @@ services:
       test: wget -qO- localhost:3000/health || exit 1
       interval: 1m
     volumes:
-      - preview_files_volume:/usr/src/app/files
+      - files_volume:/usr/src/app/files
     networks:
       - main_network
     depends_on:
@@ -79,7 +77,6 @@ services:
   preview-web:
     image: project/web:preview
     deploy:
-      #replicas: 2
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -115,9 +112,9 @@ networks:
     driver: bridge
 
 volumes:
-  preview_files_volume:
-    name: files
-  preview_db_volume:
-    name: db
-  preview_redis_volume:
-    name: redis_volume
+  files_volume:
+    name: files_preview
+  db_volume:
+    name: db_preview
+  redis_volume:
+    name: redis_preview
