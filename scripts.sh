@@ -26,6 +26,8 @@ stop:preview        - stop project in preview mode
 start:prod          - start project in production mode
 stop:prod           - stop project in production mode
 
+update:service      - update specified service
+
 build:preview       - build preview server image
 build:prod          - build production server image and push to registry
 
@@ -135,6 +137,79 @@ function dockerProductionRestart() {
 
 
 ##
+# Update Service
+##
+function _updateServiceUsage() {
+    echo -e "Usage:
+    update:service <service> - update service with latest available image\n"
+    echoCommand "Services available: web, cms, api"
+}
+
+function _updateServiceGetImage() {
+    local service=$1
+    local image="renangalvao/project:${service}-latest"
+
+    echoCommand "docker image pull $image"
+    docker image pull "$image"
+}
+
+function _updateServiceScaleUp() {
+    local service=$1
+
+    echoCommand "docker compose up -d --scale ${service}=2 --no-recreate"
+    docker compose up -d --scale "${service}=2" --no-recreate
+}
+
+function _updateServiceReloadNginx() {
+    local nginxService="server"
+
+    echoCommand "docker exec --user root $nginxService nginx -s reload"
+    docker exec --user root "$nginxService" nginx -s reload
+}
+
+function _updateServiceRemoveOldContainer() {
+    local service=$1
+    local container=$(docker container ls --format='{{.Names}}'| grep "$service" | sort | head -n 1)
+
+    echoCommand "docker rm -f $container"
+    docker rm -f "$container"
+}
+
+function updateService() {
+    local services=(
+        "web" "cms" "api"
+    )
+    local service=$2
+
+    # +1 since update:service counts as argument
+    if [ $# -eq "$((1+1))" ]; then
+        local match=0
+        for srvc in ${services[@]}; do
+            if [ $service == $srvc ]; then
+                match=1
+                break
+            fi
+        done
+
+        if [ $match -eq 1 ]; then
+            _updateServiceGetImage $service
+            _updateServiceScaleUp $service
+            _updateServiceReloadNginx
+            _updateServiceRemoveOldContainer $service
+            echo "$service updated."
+            exit 0
+        else
+            _updateServiceUsage
+            exit 1
+        fi
+    else
+        _updateServiceUsage
+        exit 1
+    fi
+}
+
+
+##
 # Build Preview
 ##
 function dockerBuildPreview() {
@@ -228,6 +303,9 @@ case $command in
         dockerProductionRestart;;
     stop:prod)
         dockerProductionDown;;
+
+    update:service)
+        updateService "$@";;
 
     build:preview)
         dockerBuildPreview;;
