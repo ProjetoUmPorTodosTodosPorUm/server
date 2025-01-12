@@ -92,6 +92,8 @@ services:
 
   preview-cms:
     image: project/cms:preview
+    env_file:
+      - .env.preview
     deploy:
       restart_policy:
         condition: on-failure
