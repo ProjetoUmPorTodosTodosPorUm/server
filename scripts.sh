@@ -26,6 +26,8 @@ stop:preview        - stop project in preview mode
 start:prod          - start project in production mode
 stop:prod           - stop project in production mode
 
+update:service      - update specified service
+
 build:preview       - build preview server image
 build:prod          - build production server image and push to registry
 
